@@ -126,6 +126,8 @@
       loadingText.textContent = 'Parsing CSV…';
 
       const messageMap = new Map();
+      let minDate = null;
+      let maxDate = null;
 
       Papa.parse(file, {
         header: true,
@@ -144,6 +146,11 @@
             case 'processed':
               msg.processed = true;
               if (row.subject) msg.subject = row.subject;
+              if (row.processed) {
+                const ts = row.processed;
+                if (!minDate || ts < minDate) minDate = ts;
+                if (!maxDate || ts > maxDate) maxDate = ts;
+              }
               break;
             case 'delivered': msg.delivered = true; break;
             case 'open':      msg.opens++;           break;
@@ -159,6 +166,8 @@
             const meta = {
               messageCount: messageMap.size,
               subjectCount: allRows.length,
+              minDate,
+              maxDate,
               filename: file.name,
               uploadedAt: new Date().toISOString(),
             };
@@ -186,9 +195,28 @@
       showStats(allRows, meta);
     }
 
+    function fmtDateRange(minIso, maxIso) {
+      const a = new Date(minIso), b = new Date(maxIso);
+      const sameMonth = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+      const sameYear  = a.getFullYear() === b.getFullYear();
+      const mon  = d => d.toLocaleDateString(undefined, { month: 'short' });
+      const day  = d => d.getDate();
+      const year = d => d.getFullYear();
+      if (sameMonth) return `${mon(a)} ${day(a)}–${day(b)}, ${year(b)}`;
+      if (sameYear)  return `${mon(a)} ${day(a)} – ${mon(b)} ${day(b)}, ${year(b)}`;
+      return `${mon(a)} ${day(a)}, ${year(a)} – ${mon(b)} ${day(b)}, ${year(b)}`;
+    }
+
     function showStats(rows, meta) {
-      statsMeta.textContent =
-        `${meta.messageCount.toLocaleString()} messages · ${meta.subjectCount.toLocaleString()} unique subjects`;
+      const dateRange = meta.minDate && meta.maxDate
+        ? fmtDateRange(meta.minDate, meta.maxDate)
+        : null;
+      const metaParts = [
+        dateRange,
+        `${meta.messageCount.toLocaleString()} messages`,
+        `${meta.subjectCount.toLocaleString()} unique subjects`,
+      ];
+      statsMeta.textContent = metaParts.filter(Boolean).join(' · ');
       const fileParts = [
         meta.filename,
         meta.uploadedAt && `uploaded ${new Date(meta.uploadedAt).toLocaleString()}`,
