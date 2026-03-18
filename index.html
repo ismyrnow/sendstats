@@ -56,11 +56,13 @@
             <option value="50">50</option>
           </select>
           <span class="text-sm text-gray-600">subjects by sends</span>
-          <span class="mx-2 text-gray-300">·</span>
-          <button id="reset-btn" class="text-sm text-gray-400 hover:text-gray-600 underline">Upload new file</button>
         </div>
       </div>
       <div id="grid-container"></div>
+      <div class="flex items-center justify-between mt-3">
+        <p class="text-xs text-gray-400" id="file-meta"></p>
+        <button id="reset-btn" class="text-xs text-gray-400 hover:text-gray-600 underline">Upload new file</button>
+      </div>
     </div>
 
   </div>
@@ -75,6 +77,7 @@
     const loadingText    = $('loading-text');
     const statsSection   = $('stats-section');
     const statsMeta      = $('stats-meta');
+    const fileMeta       = $('file-meta');
     const fileInput      = $('file-input');
     const dropZone       = $('drop-zone');
     const topNSelect     = $('top-n');
@@ -153,7 +156,12 @@
           // Yield to allow the DOM to repaint before the aggregation loop
           requestAnimationFrame(() => requestAnimationFrame(() => {
             allRows = aggregate(messageMap);
-            const meta = { messageCount: messageMap.size, subjectCount: allRows.length };
+            const meta = {
+              messageCount: messageMap.size,
+              subjectCount: allRows.length,
+              filename: file.name,
+              uploadedAt: new Date().toISOString(),
+            };
             localStorage.setItem('sendgrid_stats', JSON.stringify({ rows: allRows, meta }));
             showStats(allRows, meta);
             loadingSection.classList.add('hidden');
@@ -181,6 +189,11 @@
     function showStats(rows, meta) {
       statsMeta.textContent =
         `${meta.messageCount.toLocaleString()} messages · ${meta.subjectCount.toLocaleString()} unique subjects`;
+      const fileParts = [
+        meta.filename,
+        meta.uploadedAt && `uploaded ${new Date(meta.uploadedAt).toLocaleString()}`,
+      ];
+      fileMeta.textContent = fileParts.filter(Boolean).join(' · ');
       statsSection.classList.remove('hidden');
       renderGrid(rows.slice(0, +topNSelect.value));
     }
@@ -210,13 +223,18 @@
 
     function renderGrid(data) {
       const fmt = n => (n != null ? n.toLocaleString() : n);
+      const pct = (n, d) => d > 0 ? Math.floor(n / d * 100) : 0;
+      const muted = n => `<span style="color:#9ca3af;font-size:0.75rem;margin-left:0.35rem">${n}%</span>`;
+      const withPct = (cell, denom) =>
+        gridjs.html(`${cell.toLocaleString()}${muted(pct(cell, denom))}`);
+
       const config = {
         columns: [
           { name: 'Subject',       sort: true, width: '45%' },
           { name: 'Sends',         sort: true, formatter: fmt },
-          { name: 'Delivered',     sort: true, formatter: fmt },
-          { name: 'Unique Opens',  sort: true, formatter: fmt },
-          { name: 'Unique Clicks', sort: true, formatter: fmt },
+          { name: 'Delivered',     sort: true, formatter: (cell, row) => withPct(cell, row.cells[1].data) },
+          { name: 'Unique Opens',  sort: true, formatter: (cell, row) => withPct(cell, row.cells[2].data) },
+          { name: 'Unique Clicks', sort: true, formatter: (cell, row) => withPct(cell, row.cells[2].data) },
         ],
         data,
         sort: true,
