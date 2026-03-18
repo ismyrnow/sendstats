@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SendGrid Stats</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://unpkg.com/gridjs@6.0.6/dist/theme/mermaid.min.css" rel="stylesheet" />
+  <script src="https://unpkg.com/gridjs@6.0.6/dist/gridjs.umd.js"></script>
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-5xl mx-auto px-6 py-10">
+
+    <div class="mb-8">
+      <h1 class="text-2xl font-semibold text-gray-900">SendGrid Email Stats</h1>
+      <p class="text-sm text-gray-500 mt-1">Upload a SendGrid email activity export to view performance by subject.</p>
+    </div>
+
+    <!-- Upload -->
+    <div id="upload-section">
+      <label id="drop-zone"
+        class="flex flex-col items-center justify-center w-full h-52 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-white hover:border-blue-400 hover:bg-blue-50 transition-colors">
+        <svg class="w-8 h-8 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+        <p class="text-sm font-medium text-gray-600">Drop CSV here or <span class="text-blue-500">browse</span></p>
+        <p class="text-xs text-gray-400 mt-1">SendGrid email activity export</p>
+        <input id="file-input" type="file" accept=".csv" class="hidden" />
+      </label>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading-section" class="hidden">
+      <div class="flex items-center gap-3 p-5 bg-white rounded-xl border border-gray-200">
+        <svg class="animate-spin h-5 w-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+        <span id="loading-text" class="text-sm text-gray-600">Parsing CSV…</span>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div id="stats-section" class="hidden">
+      <div class="flex items-center justify-between mb-4">
+        <p class="text-sm text-gray-500" id="stats-meta"></p>
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-gray-600" for="top-n">Top</label>
+          <select id="top-n"
+            class="text-sm border border-gray-300 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+          </select>
+          <span class="text-sm text-gray-600">subjects by sends</span>
+          <span class="mx-2 text-gray-300">·</span>
+          <button id="reset-btn" class="text-sm text-gray-400 hover:text-gray-600 underline">Upload new file</button>
+        </div>
+      </div>
+      <div id="grid-container"></div>
+    </div>
+
+  </div>
+
+  <script>
+    let allRows = [];
+    let grid    = null;
+
+    const $             = id => document.getElementById(id);
+    const uploadSection  = $('upload-section');
+    const loadingSection = $('loading-section');
+    const loadingText    = $('loading-text');
+    const statsSection   = $('stats-section');
+    const statsMeta      = $('stats-meta');
+    const fileInput      = $('file-input');
+    const dropZone       = $('drop-zone');
+    const topNSelect     = $('top-n');
+    const resetBtn       = $('reset-btn');
+    const gridContainer  = $('grid-container');
+
+    // ── File input ───────────────────────────────────────────────────────────
+
+    fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('border-blue-400', 'bg-blue-50');
+    });
+
+    dropZone.addEventListener('dragleave', () =>
+      dropZone.classList.remove('border-blue-400', 'bg-blue-50')
+    );
+
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('border-blue-400', 'bg-blue-50');
+      handleFile(e.dataTransfer.files[0]);
+    });
+
+    resetBtn.addEventListener('click', () => {
+      allRows = [];
+      fileInput.value = '';
+      if (grid) { grid.destroy(); grid = null; }
+      statsSection.classList.add('hidden');
+      uploadSection.classList.remove('hidden');
+    });
+
+    topNSelect.addEventListener('change', () => {
+      if (allRows.length) renderGrid(allRows.slice(0, +topNSelect.value));
+    });
+
+    // ── Parse ────────────────────────────────────────────────────────────────
+
+    function handleFile(file) {
+      if (!file) return;
+
+      uploadSection.classList.add('hidden');
+      loadingSection.classList.remove('hidden');
+      loadingText.textContent = 'Parsing CSV…';
+
+      const messageMap = new Map();
+
+      Papa.parse(file, {
+        header: true,
+        worker: true,
+        step({ data: row }) {
+          const id = row.message_id;
+          const ev = row.event;
+          if (!id || !ev) return;
+
+          if (!messageMap.has(id)) {
+            messageMap.set(id, { subject: '', processed: false, delivered: false, opens: 0, clicks: 0 });
+          }
+
+          const msg = messageMap.get(id);
+          switch (ev) {
+            case 'processed':
+              msg.processed = true;
+              if (row.subject) msg.subject = row.subject;
+              break;
+            case 'delivered': msg.delivered = true; break;
+            case 'open':      msg.opens++;           break;
+            case 'click':     msg.clicks++;          break;
+          }
+        },
+
+        complete() {
+          loadingText.textContent = 'Aggregating…';
+          // Yield to allow the DOM to repaint before the aggregation loop
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            allRows = aggregate(messageMap);
+            statsMeta.textContent =
+              `${messageMap.size.toLocaleString()} messages · ${allRows.length.toLocaleString()} unique subjects`;
+            loadingSection.classList.add('hidden');
+            statsSection.classList.remove('hidden');
+            renderGrid(allRows.slice(0, +topNSelect.value));
+          }));
+        },
+
+        error(err) {
+          loadingSection.classList.add('hidden');
+          uploadSection.classList.remove('hidden');
+          alert(`Parse error: ${err.message}`);
+        },
+      });
+    }
+
+    // ── Aggregate ────────────────────────────────────────────────────────────
+
+    function aggregate(messageMap) {
+      const subjects = new Map();
+
+      for (const msg of messageMap.values()) {
+        if (!msg.processed) continue;
+        const key = msg.subject || '(no subject)';
+        if (!subjects.has(key)) subjects.set(key, { sends: 0, delivered: 0, opens: 0, clicks: 0 });
+        const s = subjects.get(key);
+        s.sends++;
+        if (msg.delivered)   s.delivered++;
+        if (msg.opens  >= 1) s.opens++;
+        if (msg.clicks >= 1) s.clicks++;
+      }
+
+      return [...subjects.entries()]
+        .map(([subject, s]) => [subject, s.sends, s.delivered, s.opens, s.clicks])
+        .sort((a, b) => b[1] - a[1]);
+    }
+
+    // ── Render ───────────────────────────────────────────────────────────────
+
+    function renderGrid(data) {
+      const fmt = n => (n != null ? n.toLocaleString() : n);
+      const config = {
+        columns: [
+          { name: 'Subject',       sort: true, width: '45%' },
+          { name: 'Sends',         sort: true, formatter: fmt },
+          { name: 'Delivered',     sort: true, formatter: fmt },
+          { name: 'Unique Opens',  sort: true, formatter: fmt },
+          { name: 'Unique Clicks', sort: true, formatter: fmt },
+        ],
+        data,
+        sort: true,
+      };
+
+      if (grid) {
+        grid.updateConfig(config).forceRender();
+      } else {
+        grid = new gridjs.Grid(config).render(gridContainer);
+      }
+    }
+  </script>
+</body>
+</html>
