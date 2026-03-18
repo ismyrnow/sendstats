@@ -104,6 +104,7 @@
       allRows = [];
       fileInput.value = '';
       if (grid) { grid.destroy(); grid = null; }
+      localStorage.removeItem('sendgrid_stats');
       statsSection.classList.add('hidden');
       uploadSection.classList.remove('hidden');
     });
@@ -152,11 +153,10 @@
           // Yield to allow the DOM to repaint before the aggregation loop
           requestAnimationFrame(() => requestAnimationFrame(() => {
             allRows = aggregate(messageMap);
-            statsMeta.textContent =
-              `${messageMap.size.toLocaleString()} messages · ${allRows.length.toLocaleString()} unique subjects`;
+            const meta = { messageCount: messageMap.size, subjectCount: allRows.length };
+            localStorage.setItem('sendgrid_stats', JSON.stringify({ rows: allRows, meta }));
+            showStats(allRows, meta);
             loadingSection.classList.add('hidden');
-            statsSection.classList.remove('hidden');
-            renderGrid(allRows.slice(0, +topNSelect.value));
           }));
         },
 
@@ -166,6 +166,23 @@
           alert(`Parse error: ${err.message}`);
         },
       });
+    }
+
+    // ── Init: restore from localStorage ─────────────────────────────────────
+
+    const saved = localStorage.getItem('sendgrid_stats');
+    if (saved) {
+      const { rows, meta } = JSON.parse(saved);
+      allRows = rows;
+      uploadSection.classList.add('hidden');
+      showStats(allRows, meta);
+    }
+
+    function showStats(rows, meta) {
+      statsMeta.textContent =
+        `${meta.messageCount.toLocaleString()} messages · ${meta.subjectCount.toLocaleString()} unique subjects`;
+      statsSection.classList.remove('hidden');
+      renderGrid(rows.slice(0, +topNSelect.value));
     }
 
     // ── Aggregate ────────────────────────────────────────────────────────────
@@ -203,6 +220,10 @@
         ],
         data,
         sort: true,
+        style: {
+          th: { 'font-size': '0.8125rem', padding: '0.4rem 0.75rem' },
+          td: { 'font-size': '0.8125rem', padding: '0.4rem 0.75rem' },
+        },
       };
 
       if (grid) {
