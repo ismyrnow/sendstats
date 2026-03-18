@@ -3,75 +3,186 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SendGrid Stats</title>
+  <title>SendStats — SendGrid email stats by subject</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://unpkg.com/gridjs@6.0.6/dist/theme/mermaid.min.css" rel="stylesheet" />
   <script src="https://unpkg.com/gridjs@6.0.6/dist/gridjs.umd.js"></script>
   <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
-<body class="bg-gray-50 min-h-screen">
-  <div class="max-w-5xl mx-auto px-6 py-10">
+<body class="bg-white text-gray-900">
 
-    <div class="mb-8">
-      <h1 class="text-2xl font-semibold text-gray-900">SendGrid Email Stats</h1>
-      <p class="text-sm text-gray-500 mt-1">Upload a SendGrid email activity export to view performance by subject.</p>
-    </div>
-
-    <!-- Upload -->
-    <div id="upload-section">
-      <label id="drop-zone"
-        class="flex flex-col items-center justify-center w-full h-52 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-white hover:border-blue-400 hover:bg-blue-50 transition-colors">
-        <svg class="w-8 h-8 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+  <!-- Nav -->
+  <header class="border-b border-gray-100">
+    <div class="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+      <span class="font-semibold tracking-tight">SendStats</span>
+      <a href="https://github.com" class="text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
         </svg>
-        <p class="text-sm font-medium text-gray-600">Drop CSV here or <span class="text-blue-500">browse</span></p>
-        <p class="text-xs text-gray-400 mt-1">SendGrid email activity export</p>
-        <input id="file-input" type="file" accept=".csv" class="hidden" />
-      </label>
+        GitHub
+      </a>
     </div>
+  </header>
 
-    <!-- Loading -->
-    <div id="loading-section" class="hidden">
-      <div class="flex items-center gap-3 p-5 bg-white rounded-xl border border-gray-200">
-        <svg class="animate-spin h-5 w-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-        <span id="loading-text" class="text-sm text-gray-600">Parsing CSV…</span>
-      </div>
-    </div>
-
-    <!-- Stats -->
-    <div id="stats-section" class="hidden">
-      <div class="flex items-center justify-between mb-4">
-        <p class="text-sm text-gray-500" id="stats-meta"></p>
-        <div class="flex items-center gap-2">
-          <label class="text-sm text-gray-600" for="top-n">Top</label>
-          <select id="top-n"
-            class="text-sm border border-gray-300 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300">
-            <option value="5">5</option>
-            <option value="10" selected>10</option>
-            <option value="25">25</option>
-            <option value="50">50</option>
-          </select>
-          <span class="text-sm text-gray-600">subjects by sends</span>
+  <!-- Hero -->
+  <section class="border-b border-gray-100 py-14">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="grid grid-cols-2 gap-12 items-center">
+        <div>
+          <h1 class="text-4xl font-bold tracking-tight mb-3">SendGrid email stats,<br>by subject line.</h1>
+          <p class="text-lg text-gray-500 mb-5">Upload your SendGrid activity export and instantly see sends, deliveries, opens, and clicks — grouped and ranked by subject.</p>
+          <div class="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-3 py-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            Your data never leaves your browser
+          </div>
+        </div>
+        <div class="aspect-video rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center">
+          <p class="text-sm text-gray-300 select-none">Image placeholder</p>
         </div>
       </div>
-      <div id="grid-container"></div>
-      <div class="flex items-center justify-between mt-3">
-        <p class="text-xs text-gray-400" id="file-meta"></p>
-        <button id="reset-btn" class="text-xs text-gray-400 hover:text-gray-600 underline">Upload new file</button>
+    </div>
+  </section>
+
+  <!-- How it works (hidden once stats are loaded) -->
+  <section id="how-it-works" class="border-b border-gray-100 py-10 bg-gray-50">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="grid grid-cols-3 gap-8">
+        <div>
+          <p class="text-xs font-semibold text-gray-300 uppercase tracking-widest mb-2">Step 1</p>
+          <h3 class="font-semibold text-gray-800 mb-1">Export from SendGrid</h3>
+          <p class="text-sm text-gray-500">Go to <span class="font-medium text-gray-700">Activity → Activity Feed</span>, set your date range, then click <span class="font-medium text-gray-700">Export CSV</span>. SendGrid will email you a download link when it's ready.</p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold text-gray-300 uppercase tracking-widest mb-2">Step 2</p>
+          <h3 class="font-semibold text-gray-800 mb-1">Upload the file</h3>
+          <p class="text-sm text-gray-500">Drop the CSV into SendStats below. Large files are fine — everything is processed locally in your browser, with no data sent anywhere.</p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold text-gray-300 uppercase tracking-widest mb-2">Step 3</p>
+          <h3 class="font-semibold text-gray-800 mb-1">Explore your stats</h3>
+          <p class="text-sm text-gray-500">See your top subjects ranked by send volume, with delivery, open, and click rates. Sort by any column to find what's working.</p>
+        </div>
       </div>
     </div>
+  </section>
 
-  </div>
+  <!-- Tool -->
+  <section class="py-12">
+    <div class="max-w-5xl mx-auto px-6">
+
+      <!-- Upload -->
+      <div id="upload-section">
+        <label id="drop-zone"
+          class="flex flex-col items-center justify-center w-full h-52 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-white hover:border-blue-400 hover:bg-blue-50 transition-colors">
+          <svg class="w-8 h-8 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          <p class="text-sm font-medium text-gray-600">Drop CSV here or <span class="text-blue-500">browse</span></p>
+          <p class="text-xs text-gray-400 mt-1">SendGrid email activity export</p>
+          <input id="file-input" type="file" accept=".csv" class="hidden" />
+        </label>
+        <p class="flex items-center justify-center gap-1 text-xs text-gray-400 mt-2">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          Your data never leaves your browser
+        </p>
+      </div>
+
+      <!-- Loading -->
+      <div id="loading-section" class="hidden">
+        <div class="flex items-center gap-3 p-5 bg-white rounded-xl border border-gray-200">
+          <svg class="animate-spin h-5 w-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span id="loading-text" class="text-sm text-gray-600">Parsing CSV…</span>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div id="stats-section" class="hidden">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-sm text-gray-500" id="stats-meta"></p>
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600" for="top-n">Top</label>
+            <select id="top-n"
+              class="text-sm border border-gray-300 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300">
+              <option value="5">5</option>
+              <option value="10" selected>10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+            <span class="text-sm text-gray-600">subjects by sends</span>
+          </div>
+        </div>
+        <div id="grid-container"></div>
+        <div class="flex items-center justify-between mt-3">
+          <p class="text-xs text-gray-400" id="file-meta"></p>
+          <button id="reset-btn" class="text-xs text-gray-400 hover:text-gray-600 underline">Upload new file</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="border-t border-gray-100 py-14 bg-gray-50">
+    <div class="max-w-5xl mx-auto px-6">
+      <h2 class="text-xl font-semibold mb-8">Frequently asked questions</h2>
+      <div class="grid grid-cols-2 gap-x-12 gap-y-8 max-w-3xl">
+
+        <div>
+          <h3 class="font-medium text-gray-800 mb-1">Where does my data go?</h3>
+          <p class="text-sm text-gray-500">Nowhere. SendStats runs entirely in your browser. Your CSV is never uploaded to any server, and nothing is transmitted anywhere.</p>
+        </div>
+
+        <div>
+          <h3 class="font-medium text-gray-800 mb-1">How do I export my SendGrid data?</h3>
+          <p class="text-sm text-gray-500">In SendGrid, go to <span class="font-medium text-gray-700">Activity → Activity Feed</span>. Set your date range, then click <span class="font-medium text-gray-700">Export CSV</span>. SendGrid will email you a download link when the export is ready.</p>
+        </div>
+
+        <div>
+          <h3 class="font-medium text-gray-800 mb-1">What do the columns mean?</h3>
+          <p class="text-sm text-gray-500"><span class="font-medium text-gray-700">Sends</span> counts processed events. <span class="font-medium text-gray-700">Delivered</span> is messages that reached the inbox. <span class="font-medium text-gray-700">Unique Opens</span> and <span class="font-medium text-gray-700">Unique Clicks</span> count messages where at least one open or click was recorded.</p>
+        </div>
+
+        <div>
+          <h3 class="font-medium text-gray-800 mb-1">Does it work with large files?</h3>
+          <p class="text-sm text-gray-500">Yes. SendStats streams the CSV row-by-row, so even exports in the tens of megabytes parse quickly without loading everything into memory at once.</p>
+        </div>
+
+        <div>
+          <h3 class="font-medium text-gray-800 mb-1">Do I need to re-upload after closing the tab?</h3>
+          <p class="text-sm text-gray-500">No — SendStats saves your last results to browser local storage, so they're available on your next visit without re-uploading the file.</p>
+        </div>
+
+        <div>
+          <h3 class="font-medium text-gray-800 mb-1">Does this only work with SendGrid?</h3>
+          <p class="text-sm text-gray-500">For now, yes. SendStats is built around the SendGrid activity export format. The CSV columns need to match what SendGrid produces.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-100 py-6">
+    <div class="max-w-5xl mx-auto px-6">
+      <p class="text-sm text-gray-400">SendStats — SendGrid email stats by subject line</p>
+    </div>
+  </footer>
 
   <script>
     let allRows = [];
     let grid    = null;
 
-    const $             = id => document.getElementById(id);
+    const $              = id => document.getElementById(id);
     const uploadSection  = $('upload-section');
     const loadingSection = $('loading-section');
     const loadingText    = $('loading-text');
@@ -83,6 +194,7 @@
     const topNSelect     = $('top-n');
     const resetBtn       = $('reset-btn');
     const gridContainer  = $('grid-container');
+    const howItWorks     = $('how-it-works');
 
     // ── File input ───────────────────────────────────────────────────────────
 
@@ -110,6 +222,7 @@
       localStorage.removeItem('sendgrid_stats');
       statsSection.classList.add('hidden');
       uploadSection.classList.remove('hidden');
+      howItWorks.classList.remove('hidden');
     });
 
     topNSelect.addEventListener('change', () => {
@@ -160,7 +273,6 @@
 
         complete() {
           loadingText.textContent = 'Aggregating…';
-          // Yield to allow the DOM to repaint before the aggregation loop
           requestAnimationFrame(() => requestAnimationFrame(() => {
             allRows = aggregate(messageMap);
             const meta = {
@@ -192,8 +304,11 @@
       const { rows, meta } = JSON.parse(saved);
       allRows = rows;
       uploadSection.classList.add('hidden');
+      howItWorks.classList.add('hidden');
       showStats(allRows, meta);
     }
+
+    // ── Date formatting ──────────────────────────────────────────────────────
 
     function fmtDateRange(minIso, maxIso) {
       const a = new Date(minIso), b = new Date(maxIso);
@@ -207,21 +322,22 @@
       return `${mon(a)} ${day(a)}, ${year(a)} – ${mon(b)} ${day(b)}, ${year(b)}`;
     }
 
+    // ── Show stats ───────────────────────────────────────────────────────────
+
     function showStats(rows, meta) {
       const dateRange = meta.minDate && meta.maxDate
         ? fmtDateRange(meta.minDate, meta.maxDate)
         : null;
-      const metaParts = [
+      statsMeta.textContent = [
         dateRange,
         `${meta.messageCount.toLocaleString()} messages`,
         `${meta.subjectCount.toLocaleString()} unique subjects`,
-      ];
-      statsMeta.textContent = metaParts.filter(Boolean).join(' · ');
-      const fileParts = [
+      ].filter(Boolean).join(' · ');
+      fileMeta.textContent = [
         meta.filename,
         meta.uploadedAt && `uploaded ${new Date(meta.uploadedAt).toLocaleString()}`,
-      ];
-      fileMeta.textContent = fileParts.filter(Boolean).join(' · ');
+      ].filter(Boolean).join(' · ');
+      howItWorks.classList.add('hidden');
       statsSection.classList.remove('hidden');
       renderGrid(rows.slice(0, +topNSelect.value));
     }
