@@ -39,8 +39,8 @@
             Your data never leaves your browser
           </div>
         </div>
-        <div class="aspect-video rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center">
-          <p class="text-sm text-gray-300 select-none">Image placeholder</p>
+        <div>
+          <img src="airplane.jpg" alt="" class="rounded-xl w-full" />
         </div>
       </div>
     </div>
@@ -91,6 +91,9 @@
               d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
           Your data never leaves your browser
+        </p>
+        <p class="text-center mt-3 text-xs text-gray-400">
+          No CSV yet? <button id="sample-btn" class="text-blue-500 hover:text-blue-700">Try with sample data</button>
         </p>
       </div>
 
@@ -195,6 +198,7 @@
     const resetBtn       = $('reset-btn');
     const gridContainer  = $('grid-container');
     const howItWorks     = $('how-it-works');
+    const sampleBtn      = $('sample-btn');
 
     // ── File input ───────────────────────────────────────────────────────────
 
@@ -227,6 +231,46 @@
 
     topNSelect.addEventListener('change', () => {
       if (allRows.length) renderGrid(allRows.slice(0, +topNSelect.value));
+    });
+
+    // ── Sample data ──────────────────────────────────────────────────────────
+
+    sampleBtn.addEventListener('click', () => {
+      const now = new Date();
+      const ago30 = new Date(now - 30 * 24 * 60 * 60 * 1000);
+      const toTs  = d => d.toISOString().replace('T', ' ').slice(0, 23) + '00';
+
+      const subjects = [
+        { subject: "Welcome! Please confirm your email address",  sends: 4200, dr: 0.97, or: 0.58, cr: 0.042 },
+        { subject: "Your order has been confirmed",               sends: 3800, dr: 0.98, or: 0.61, cr: 0.031 },
+        { subject: "Reset your password",                         sends: 3100, dr: 0.98, or: 0.54, cr: 0.048 },
+        { subject: "Your free trial expires in 3 days",           sends: 1800, dr: 0.96, or: 0.42, cr: 0.035 },
+        { subject: "Your item has shipped",                       sends: 1400, dr: 0.97, or: 0.55, cr: 0.029 },
+        { subject: "You left something in your cart",             sends:  980, dr: 0.95, or: 0.38, cr: 0.052 },
+        { subject: "Your monthly invoice is ready",               sends:  720, dr: 0.97, or: 0.44, cr: 0.021 },
+        { subject: "Introducing our latest feature",              sends:  540, dr: 0.94, or: 0.28, cr: 0.018 },
+        { subject: "We miss you — here's 20% off",               sends:  420, dr: 0.93, or: 0.31, cr: 0.044 },
+        { subject: "Your support ticket has been resolved",       sends:  310, dr: 0.97, or: 0.47, cr: 0.012 },
+      ];
+
+      allRows = subjects.map(({ subject, sends, dr, or: openRate, cr }) => {
+        const delivered = Math.round(sends * dr);
+        const opens     = Math.round(delivered * openRate);
+        const clicks    = Math.round(delivered * cr);
+        return [subject, sends, delivered, opens, clicks];
+      });
+
+      const meta = {
+        messageCount: allRows.reduce((sum, r) => sum + r[1], 0),
+        subjectCount: allRows.length,
+        minDate: toTs(ago30),
+        maxDate: toTs(now),
+        filename: 'sample data',
+        uploadedAt: new Date().toISOString(),
+      };
+
+      uploadSection.classList.add('hidden');
+      showStats(allRows, meta);
     });
 
     // ── Parse ────────────────────────────────────────────────────────────────
